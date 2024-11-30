@@ -3,7 +3,7 @@ package kvsrv
 import "6.5840/labrpc"
 import "crypto/rand"
 import "math/big"
-
+//import "fmt"
 
 type Clerk struct {
 	server *labrpc.ClientEnd
@@ -35,9 +35,25 @@ func MakeClerk(server *labrpc.ClientEnd) *Clerk {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) Get(key string) string {
-
 	// You will have to modify this function.
-	return ""
+	opnum := nrand()
+	args := GetArgs{key, opnum, false}
+	reply := GetReply{}
+	ok := ck.server.Call("KVServer.Get", &args, &reply)
+	// re-send if message lost
+	for ok == false {
+		ok = ck.server.Call("KVServer.Get", &args, &reply)
+	}
+
+	// send free server memory request
+	args_free := GetArgs{key, opnum, true}
+	reply_free := GetReply{}
+	ok_free := ck.server.Call("KVServer.Get", &args_free, &reply_free)
+	for ok_free == false {
+		ok_free = ck.server.Call("KVServer.Get", &args_free, &reply_free)
+	}
+
+	return reply.Value
 }
 
 // shared by Put and Append.
@@ -50,7 +66,24 @@ func (ck *Clerk) Get(key string) string {
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	// You will have to modify this function.
-	return ""
+	opnum := nrand()
+	args := PutAppendArgs{key, value, opnum, false}
+	reply := PutAppendReply{}
+	ok := ck.server.Call("KVServer."+op, &args, &reply)
+	// re-send if message lost
+	for ok == false {
+		ok = ck.server.Call("KVServer."+op, &args, &reply)
+	}
+
+	// send free server memory request
+	args_free := PutAppendArgs{key, value, opnum, true}
+	reply_free := PutAppendReply{}
+	ok_free := ck.server.Call("KVServer."+op, &args_free, &reply_free)
+	for ok_free == false {
+		ok_free = ck.server.Call("KVServer."+op, &args_free, &reply_free)
+	}
+
+	return reply.Value
 }
 
 func (ck *Clerk) Put(key string, value string) {
